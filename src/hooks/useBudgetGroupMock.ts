@@ -1,59 +1,60 @@
-// src/hooks/useBudgetGroupMock.ts
-import { useEffect, useMemo, useState } from "react";
-import { budgetGroupsMock } from "@/mocks/budget-groups";
-import type { AgencyDatum } from "@/mocks/budget-groups";
+import { useEffect, useMemo, useState } from "react"
+import { budgetGroupsMock, type BudgetGroup } from "@/mocks/budget-groups"
 
 type Options = {
-  group?: string;
-  query?: string;
-  sortDir?: "asc" | "desc";
-  limit?: number;
-  delayMs?: number;
-};
+  groups?: string[]
+  delayMs?: number
+  sortDir?: "asc" | "desc"
+}
 
-export function useBudgetGroupMock(opts: Options = {}) {
-  const {
-    group,
-    query = "",
-    sortDir = "desc",
-    limit,
-    delayMs = 300,
-  } = opts;
-
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<AgencyDatum[]>([]);
-
-  const groups = useMemo(() => budgetGroupsMock.map((g) => g.group), []);
+export function useBudgetGroupsMock({
+  groups,
+  delayMs = 400,
+  sortDir = "desc",
+}: Options = {}) {
+  const [data, setData] = useState<BudgetGroup[] | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true);
     const t = setTimeout(() => {
-      const activeGroup =
-        budgetGroupsMock.find((g) => g.group === group) ?? budgetGroupsMock[0];
+      let res = budgetGroupsMock
 
-      let rows = [...activeGroup.items];
+      if (groups?.length) {
+        res = res.filter((g) => groups.includes(g.group))
+      }
 
-      const q = query.trim().toLowerCase();
-      if (q) rows = rows.filter((r) => r.agency.toLowerCase().includes(q));
+      res = res.map((g) => ({
+        ...g,
+        items: [...g.items].sort((a, b) =>
+          sortDir === "asc" ? a.budget - b.budget : b.budget - a.budget
+        ),
+      }))
 
-      // เรียงตาม budget เสมอ
-      rows.sort((a, b) =>
-        sortDir === "asc" ? a.budget - b.budget : b.budget - a.budget
-      );
+      setData(res)
+      setLoading(false)
+    }, delayMs)
 
-      if (limit) rows = rows.slice(0, limit);
+    return () => clearTimeout(t)
+  }, [delayMs, sortDir, groups?.join("|")])
 
-      setData(rows);
-      setLoading(false);
-    }, delayMs);
+  const totals = useMemo(() => {
+    if (!data) return { byGroup: {} as Record<string, number>, overall: 0 }
+    const byGroup: Record<string, number> = {}
+    let overall = 0
+    data.forEach((g) => {
+      const sum = g.items.reduce((s, i) => s + i.budget, 0)
+      byGroup[g.group] = sum
+      overall += sum
+    })
+    return { byGroup, overall }
+  }, [data])
 
-    return () => clearTimeout(t);
-  }, [group, query, sortDir, limit, delayMs]);
+  const flatItems = useMemo(() => {
+    if (!data) return []
+    return data.flatMap((g) =>
+      g.items.map((i) => ({ ...i, group: g.group }))
+    )
+  }, [data])
 
-  const totalBudget = useMemo(
-    () => data.reduce((s, r) => s + r.budget, 0),
-    [data]
-  );
-
-  return { data, loading, groups, totalBudget };
+  return { data, loading, totals, flatItems }
 }

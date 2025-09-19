@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useEmployeesMock, groupByTeam } from "@/hooks/useEmployeesMock";
 import type { Employee } from "@/mocks/employees";
-
+import { Link } from "react-router-dom";
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   return (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
@@ -26,7 +26,9 @@ const EmployeePage = () => {
     <>
       <div className="flex justify-between items-center">
         <div className="text-sm">พนักงานทั้งหมด</div>
-        <Button  variant="outline" size="sm">กลับ</Button>
+        <Link to="/">
+          <Button variant="outline" size="sm">กลับ</Button>
+        </Link>
       </div>
 
       <div className="flex items-center justify-between flex-column flex-wrap md:flex-row space-y-4 md:space-y-0 pb-2 mt-2 ">
